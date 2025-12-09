@@ -23,6 +23,8 @@ fn main() {
 }
 
 fn run() -> i32 {
+    log_line("启动 updater.exe");
+
     let args: Vec<String> = env::args().collect();
     if args.len() != 4 {
         log_line("参数错误：期待 updater.exe <updateAsar> <appAsar> <executable>");
@@ -33,8 +35,18 @@ fn run() -> i32 {
     let app_asar = Path::new(&args[2]);
     let executable = Path::new(&args[3]);
 
+    log_line(&format!(
+        "接收到参数: update_asar={:?}, app_asar={:?}, executable={:?}",
+        update_asar, app_asar, executable
+    ));
+
     // 短暂等待，避免主进程尚未完全退出时文件被占用
     thread::sleep(Duration::from_millis(700));
+
+    if !update_asar.exists() {
+        log_line("update_asar 不存在，退出");
+        return 2;
+    }
 
     if let Err(err) = copy_with_retry(update_asar, app_asar, 3, Duration::from_millis(300)) {
         log_line(&format!(
@@ -46,6 +58,8 @@ fn run() -> i32 {
         return 2;
     }
 
+    log_line("复制成功，准备重启主程序");
+
     if let Err(err) = launch_executable(executable) {
         log_line(&format!(
             "重启主程序失败: {} | {}",
@@ -55,6 +69,7 @@ fn run() -> i32 {
         return 3;
     }
 
+    log_line("updater 执行完成");
     0
 }
 
@@ -93,6 +108,7 @@ fn launch_executable(exe: &Path) -> io::Result<()> {
     {
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
+    log_line(&format!("启动主程序: {:?}", exe));
     cmd.spawn().map(|_| ())
 }
 
