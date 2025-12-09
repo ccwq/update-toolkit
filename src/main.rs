@@ -103,13 +103,29 @@ fn copy_with_retry(
 
 fn launch_executable(exe: &Path) -> io::Result<()> {
     let mut cmd = Command::new(exe);
+
+    // 将工作目录切到主程序所在目录，避免相对路径依赖（dll/资源）找不到
+    if let Some(dir) = exe.parent() {
+        cmd.current_dir(dir);
+        log_line(&format!("设置工作目录: {:?}", dir));
+    } else {
+        log_line("未能解析主程序目录，沿用当前目录启动");
+    }
+
     // 使用 CREATE_NO_WINDOW 避免唤起控制台窗口
     #[cfg(windows)]
     {
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
     log_line(&format!("启动主程序: {:?}", exe));
-    cmd.spawn().map(|_| ())
+
+    cmd.spawn().map(|_| ()).map_err(|err| {
+        // 追加 OS 错误码方便排查
+        if let Some(code) = err.raw_os_error() {
+            log_line(&format!("启动失败，os_error={}", code));
+        }
+        err
+    })
 }
 
 fn log_line(msg: &str) {
