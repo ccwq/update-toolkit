@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  rust-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /work/update-toolkit
+    environment:
+      # 确保生成 GUI 子系统，无控制台窗口
+      RUSTFLAGS: -C link-args=-Wl,--subsystem,windows
+    volumes:
+      - ..:/work
+      - cargo-registry:/root/.cargo/registry
+      - cargo-git:/root/.cargo/git
+      - target-cache:/work/update-toolkit/target
+    command: cargo build --release --target x86_64-pc-windows-gnu
+
+volumes:
+  cargo-registry:
+  cargo-git:
+  target-cache:
